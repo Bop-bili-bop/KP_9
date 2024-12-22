@@ -1,90 +1,105 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <conio.h>
 #include "validation.h"
-#define MENU_VISUAL "MENU"
-#define FILE_MODE_VISUAL "File mode:"
-#define RECORDS_MODE_VISUAL "Records mode:"
-#define CREATE_FILE_VISUAL "0 - create file"
-#define READ_FILE_VISUAL "1 - read file"
-#define WRITE_FILE_VISUAL "2 - delete file"
-#define CREATE_RECORD_VISUAL "3 - create record"
-#define READ_RECORD_VISUAL "4 - read record"
-#define EDIT_RECORD_VISUAL "5 - edit record"
-#define SORT_RECORD_VISUAL "6 - sort record"
-#define PASTE_RECORD_VISUAL "7 - paste record"
-#define DELETE_RECORD_VISUAL "8 - delete record"
-#define EXIT_PROGRAM_VISUAL "9 - exit program"
-#define INSPECT_FILE_HEADER "10 - inspect file header"
+#include "function.h"
 
-
-typedef struct record {
-    char region[40];
-    int population;
-    float area;
-}record;
+#define MAX_REGION_LEN 3
 
 FILE *file;
 
-int main()
+typedef struct Record
 {
-    const int menu_options = 10;
-    char *menu[] = {
-        CREATE_FILE_VISUAL,
-        READ_FILE_VISUAL,
-        WRITE_FILE_VISUAL,
-        CREATE_RECORD_VISUAL,
-        READ_RECORD_VISUAL,
-        EDIT_RECORD_VISUAL,
-        SORT_RECORD_VISUAL,
-        PASTE_RECORD_VISUAL,
-        DELETE_RECORD_VISUAL,
-        EXIT_PROGRAM_VISUAL
-    };
-    char* file_name = "nigger.txt";
-    char menu_choice = 0;
-    printf("%25s\n", MENU_VISUAL);
-    printf("%s", FILE_MODE_VISUAL);
-    printf("%40s\n", RECORDS_MODE_VISUAL);
-    for (int i = 0; i < menu_options; i++) {
-        if (i < 3) {
-            // Print file mode options in the left column
-            printf("%-37s", menu[i]);
-            // Pair with records mode option if it exists
-            if (i + 3 < menu_options) {
-                printf("%s\n", menu[i + 3]);
-            } else {
-                printf("\n"); // If no right-column option exists, move to the next line
-            }
-        } else if (i >= 9) {
-            // Handle additional options (9 and 10) separately
-            printf("%s\n", menu[i]);
+    char regionName[MAX_REGION_LEN];
+    float squareArea;
+    float population;
+}record;
+
+int validateProgramFile(const char *fileName) {
+    FILE *file = fopen(fileName, "r");
+    if (file == NULL) {
+        return 0;
+    }
+    char buffer[128] = "";
+    if (fgets(buffer, sizeof(buffer), file) == NULL) {
+        fclose(file);
+        return 0;
+    }
+
+    // Видаляємо переведення рядка
+    size_t len = strlen(buffer);
+    if (len > 0 && buffer[len - 1] == '\n') {
+        buffer[len - 1] = '\0';
+    }
+
+    fclose(file);
+    return strcmp(buffer, DESCRIPTOR) == 0; // Повертає 1, якщо дескриптор збігається
+}
+
+int selectFileFromList(const char fileList[][MAX_FILE_NAME], unsigned fileCount, char *selectedFile) {
+    int choice = 0;
+
+    printf("\nAvailable valid program files:\n");
+    for (int i = 0; i < fileCount; i++) {
+        printf("%d. %s\n", i + 1, fileList[i]);
+    }
+
+    while (1) {
+        printf("Select a file by entering its number (or 0 to cancel): ");
+        if (scanf("%d", &choice) != 1) {
+            fflush(stdin);
+            printf("Invalid input. Please enter a number.\n");
+            continue;
+        }
+
+        if (choice == 0) {
+            printf("Operation canceled.\n");
+            return 0; // Користувач скасував вибір
+        }
+
+        if (choice < 1 || choice > fileCount) {
+            printf("Invalid choice. Please select a valid number.\n");
+        } else {
+            break;
         }
     }
-    menu_choice = (char) getch();
-    switch (menu_choice) {
-        case '0':
-            file = fopen(file_name, "w");
-            break;
-        case '1':
-            break;
-        case '2':
-            break;
-        case '3':
-            break;
-        case '4':
-            break;
-        case '5':
-            break;
-        case '6':
-            break;
-        case '7':
-            break;
-        case '8':
-            break;
-        default:
-            printf("Invalid choice\n");
-            break;
+
+    // Копіюємо вибране ім'я файлу
+    strcpy(selectedFile, fileList[choice - 1]);
+    return 1;
+}
+
+int main() {
+    char fileName[MAX_FILE_NAME];
+
+    char selectedFile[MAX_FILE_NAME] = "";
+
+    unsigned validFileCount = 0;
+    createFile(fileName, fileCount);
+    printf("Checking files...\n");
+    for (int i = 0; i < fileCount; i++) {
+        if (validateProgramFile(fileList[i])) {
+            printf("%d. %s (valid)\n", validFileCount + 1, fileList[i]);
+            strcpy(fileList[validFileCount], fileList[i]); // Зберігаємо тільки валідні файли
+            validFileCount++;
+        } else {
+            printf("%d. %s (invalid)\n", i + 1, fileList[i]);
+        }
     }
+
+    if (validFileCount == 0) {
+        printf("No valid program files found.\n");
+        return 0;
+    }
+
+    // Дозволяємо користувачеві вибрати файл
+    if (selectFileFromList(fileList, validFileCount, selectedFile)) {
+        printf("You selected file: %s\n", selectedFile);
+        // Логіка роботи з обраним файлом
+    } else {
+        printf("No file selected.\n");
+    }
+
     getch();
     return 0;
 }
