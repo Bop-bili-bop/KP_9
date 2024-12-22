@@ -16,7 +16,7 @@ int validInputString(char *arr, int size) {
     // Handle case when input exceeds buffer size
     if (arr[stringLen - 1] != '\n') {
         printf("Invalid input. Max length of string is: %d\n", size);
-        while (getchar() != '\n' && !feof(stdin)); // Clear input buffer
+        fflush(stdin); // Clear input buffer
         return 0;
     }
 
