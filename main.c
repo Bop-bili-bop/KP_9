@@ -15,7 +15,13 @@ int main() {
     record record1 = {"ua", 4.666, 5.5455};
     listExistingDatFiles(fileList, &fileCount);
     chooseFile(fileName);
-    addRecordToFile(fileName, &record1);
+    readFile(fileName);
+    int recordIndex;
+    printf("Enter the number of the record to delete (starting from 1): ");
+    scanf("%d", &recordIndex);
+    recordIndex -= 1;
+    deleteRecordFromFile(fileName, recordIndex);
+    sortRecordsInFile(fileName, 1, 1);
     readFile(fileName);
     getch();  // Wait for user input before exiting
     return 0;
