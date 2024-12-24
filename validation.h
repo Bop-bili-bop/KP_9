@@ -40,7 +40,7 @@ void validateInputFileName(char *string) {
 }
 int isValidDescriptor(const char *filename) {
     FILE *file = fopen(filename, "r");  // Open the file for reading
-    if (!file) {
+    if (file == NULL) {
         return 0;  // If the file cannot be opened, return 0
     }
 
@@ -56,12 +56,12 @@ int isValidDescriptor(const char *filename) {
     return 0;  // If the lines don't match, return 0
 }
 int doesFileExist(const char *filename) {
-    FILE *file = fopen(filename, "r");  // Try to open the file for reading
+    FILE *file = fopen(filename, "r");
     if (file) {
         fclose(file);
-        return 1;  // If the file exists, return 1
+        return 1;
     }
-    return 0;  // If the file doesn't exist, return 0
+    return 0;
 }
 
 #endif

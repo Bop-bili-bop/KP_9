@@ -13,6 +13,16 @@
 #define MAX_FILES 10
 #define MAX_RECORD_IN_FILE 10
 #define MAX_RECORD_LEN 512
+#define MENU_KEY_CHOOSE_FILE '0'
+#define MENU_KEY_CREATE_FILE '1'
+#define MENU_KEY_OPEN_FILE '2'
+#define MENU_KEY_DELETE_FILE '3'
+#define MENU_KEY_CREATE_RECORD '4'
+#define MENU_KEY_READ_RECORD '5'
+#define MENU_KEY_EDIT_RECORD '6'
+#define MENU_KEY_SORT_RECORD '7'
+#define MENU_KEY_INSERT_RECORD '8'
+#define MENU_KEY_DELETE_RECORD '9'
 typedef struct record
 {
     char regionName[MAX_REGION_LEN];
@@ -25,7 +35,6 @@ void createFile(char *fileName) {
     do
     {
         errorCatch = 0;
-        // Try creating the file
         file = fopen(fileName, "w");
         if (file == NULL) {
             printf("Error! File wasn't created.\n");
@@ -33,33 +42,45 @@ void createFile(char *fileName) {
         }
         else
         {
-            // File created successfully
             printf("File created successfully with name %s\n", fileName);
             fprintf(file, "%s\n", DESCRIPTOR);
-            errorCatch = 0; // Success, no error
+            errorCatch = 0;
         }
         fclose(file);
-    } while (errorCatch != 0); // Retry if error occurred
+    } while (errorCatch != 0);
+}
+void createNewFileByName(char *selectedFile) {
+    do {
+        printf("Enter name of file you want to create:\n");
+        validateInputFileName(selectedFile);
+        strcat(selectedFile, ".dat");
+        if(doesFileExist(selectedFile)) {
+            printf("File already exists. Please enter another name\n");
+        }
+    } while (doesFileExist(selectedFile));
+    createFile(selectedFile);
 }
 void listExistingDatFiles(char files[][MAX_FILE_NAME], unsigned *fileCount)
 {
     struct dirent *entry;
     DIR *dp = opendir(".");  // Open the current directory
-
     if (!dp) {
         printf("Failed to open directory.\n");
         return;
     }
-
     *fileCount = 0;
     while ((entry = readdir(dp)) != NULL) {
         struct stat fileStat;
-        if (stat(entry->d_name, &fileStat) == 0) {
-            if (S_ISREG(fileStat.st_mode)) {  // Check if it's a regular file
+        if (stat(entry->d_name, &fileStat) == 0)
+        {
+            if (S_ISREG(fileStat.st_mode))
+            {  // Check if it's a regular file
                 // Check if the file has a .dat extension
                 const char *ext = strrchr(entry->d_name, '.');
-                if (ext && strcmp(ext, ".dat") == 0) {
-                    if (isValidDescriptor(entry->d_name)) {
+                if (ext && strcmp(ext, ".dat") == 0)
+                {
+                    if (isValidDescriptor(entry->d_name))
+                    {
                         strncpy(files[*fileCount], entry->d_name, MAX_FILE_NAME_LEN);
                         (*fileCount)++;
                     }
@@ -67,81 +88,65 @@ void listExistingDatFiles(char files[][MAX_FILE_NAME], unsigned *fileCount)
             }
         }
     }
+    if (*fileCount == 0) {
+        printf("No files found.\n");
+    }
     closedir(dp);
 }
 void chooseFile(char *selectedFile) {
-    char files[100][MAX_FILE_NAME]; // Array to hold filenames
+    char files[MAX_FILES][MAX_FILE_NAME];
     unsigned fileCount = 0;
-
     listExistingDatFiles(files, &fileCount);
-
     if (fileCount == 0) {
         printf("No .dat files found.\n");
         return;
     }
-
     printf("Available .dat files:\n");
     for (int i = 0; i < fileCount; i++) {
         printf("%d. %s\n", i + 1, files[i]);
     }
-    printf("Enter the number of the file you want to select or name of file you want to create:\n");
-    int choice;
-    if (scanf("%d", &choice) == 1 && choice > 0 && choice <= fileCount) {
+    int choice = 0;
+    int validInput = 0;
+    do {
+        printf("Enter the number of the file you want to select:\n");
+        validInput = scanf("%d", &choice);
+        if (validInput != 1 || choice < 0 || choice > fileCount) {
+            printf("Invalid choice.\n");
+        }
+        else {
+            strncpy(selectedFile, files[choice - 1], MAX_FILE_NAME);
+            printf("You selected file: %s", selectedFile);
+            printf("\n");
+        }
         fflush(stdin);
-        // User chose a file by number
-        strncpy(selectedFile, files[choice - 1], MAX_FILE_NAME);
-        printf("You selected file: %s", selectedFile);
-        printf("\n");
-    }
-    else
-    {
-        do {
-            validateInputFileName(selectedFile);
-            strcat(selectedFile, ".dat");
-            if(doesFileExist(selectedFile)) {
-                printf("File already exists. Please select file from the list or enter another name\n");
-            }
-        } while (doesFileExist(selectedFile));
-        createFile(selectedFile);
-    }
+    }while (validInput != 1 || choice < 0 || choice > fileCount);
 }
-
-// Function to read the contents of a file and print to the console
 void readFile(const char *fileName) {
     FILE *file = fopen(fileName, "r");
     if (file == NULL) {
         printf("Error opening file '%s' for reading: %s\n", fileName, strerror(errno));
-        return;  // Exit if the file cannot be opened
+        return;
     }
-
     char buffer[256];
-
-    // Skip the descriptor line (first line)
     if (fgets(buffer, sizeof(buffer), file) == NULL) {
         printf("Error: File is empty or could not read the descriptor line.\n");
         fclose(file);
         return;
     }
-
-    // Now, read and print the rest of the file
     printf("Reading file '%s' contents (ignoring descriptor):\n", fileName);
     while (fgets(buffer, sizeof(buffer), file)) {
-        printf("%s", buffer);  // Print each line read from the file, ignoring the descriptor
+        printf("%s", buffer);
     }
-
-    fclose(file);  // Close the file after reading
+    fclose(file);
     printf("\nFile reading complete.\n");
 }
-
-// Function to delete a file
 int deleteFile(const char *fileName) {
     if (remove(fileName) == 0) {
         printf("File '%s' deleted successfully.\n", fileName);
-        return 1;  // Return success
+        return 1;
     }
     printf("Error deleting file '%s': %s\n", fileName, strerror(errno));
-    return 0;  // Return failure if the file could not be deleted
-
+    return 0;
 }
 
 int readRecordsFromFile(const char *filename, record **records) {
@@ -154,7 +159,6 @@ int readRecordsFromFile(const char *filename, record **records) {
     record *recordList = calloc(100, sizeof(record));  // Allocate memory for 100 records
     int recordCount = 0;
     char line[MAX_RECORD_LEN];
-
     // Read records line by line
     while (fgets(line, sizeof(line), file)) {
         if (strncmp(line, "Record", 6) == 0) {
@@ -171,7 +175,6 @@ int readRecordsFromFile(const char *filename, record **records) {
             recordCount++;
         }
     }
-
     fclose(file);
     *records = recordList;
     return recordCount;
@@ -311,5 +314,30 @@ void sortRecordsInFile(const char *filename, int field, int order) {
     writeRecordsToFile(filename, records, recordCount);
     free(records);
     printf("Records sorted successfully.\n");
+}
+
+
+void printMenuOptions() {
+    printf("%c - choose a file to work with\n"
+               "%c - create a file\n"
+               "%c - open a file\n"
+               "%c - delete a file\n"
+               "%c - create a record\n"
+               "%c - read a record\n"
+               "%c - edit a record\n"
+               "%c - sort a record\n"
+               "%c - insert a record\n"
+               "%c - delete a record\n"
+               "ESC - exit the program\n"
+               ,MENU_KEY_CHOOSE_FILE
+               ,MENU_KEY_CREATE_FILE
+               ,MENU_KEY_OPEN_FILE
+               ,MENU_KEY_DELETE_FILE
+               ,MENU_KEY_CREATE_RECORD
+               ,MENU_KEY_READ_RECORD
+               ,MENU_KEY_EDIT_RECORD
+               ,MENU_KEY_SORT_RECORD
+               ,MENU_KEY_INSERT_RECORD
+               ,MENU_KEY_DELETE_RECORD);
 }
 #endif // FUNCTION_H
