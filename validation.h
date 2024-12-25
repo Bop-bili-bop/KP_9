@@ -63,5 +63,18 @@ int doesFileExist(const char *filename) {
     }
     return 0;
 }
+float validateFloatInput(char *prompt, float min, float max) {
+    float input = 0;
+    int correctInput = 0;
+    do {
+        printf("%s", prompt);
+        correctInput = scanf("%f", &input);
+        if (correctInput != 1 || input < min || input > max) {
+            printf("Invalid input.\n");
+        }
+        fflush(stdin);
+    } while (correctInput != 1 || input < min || input > max);
+    return input;
+}
 
 #endif

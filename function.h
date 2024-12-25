@@ -13,6 +13,8 @@
 #define MAX_FILES 10
 #define MAX_RECORD_IN_FILE 10
 #define MAX_RECORD_LEN 512
+#define FLOAT_MIN 1e-4
+#define FLOAT_MAX 1e7
 #define MENU_KEY_CHOOSE_FILE '0'
 #define MENU_KEY_CREATE_FILE '1'
 #define MENU_KEY_OPEN_FILE '2'
@@ -88,9 +90,6 @@ void listExistingDatFiles(char files[][MAX_FILE_NAME], unsigned *fileCount)
             }
         }
     }
-    if (*fileCount == 0) {
-        printf("No files found.\n");
-    }
     closedir(dp);
 }
 void chooseFile(char *selectedFile) {
@@ -98,7 +97,7 @@ void chooseFile(char *selectedFile) {
     unsigned fileCount = 0;
     listExistingDatFiles(files, &fileCount);
     if (fileCount == 0) {
-        printf("No .dat files found.\n");
+        printf("No supported files found.\n");
         return;
     }
     printf("Available .dat files:\n");
@@ -121,22 +120,49 @@ void chooseFile(char *selectedFile) {
         fflush(stdin);
     }while (validInput != 1 || choice < 0 || choice > fileCount);
 }
-void readFile(const char *fileName) {
+void readFile(char *fileName) {
     FILE *file = fopen(fileName, "r");
     if (file == NULL) {
         printf("Error opening file '%s' for reading: %s\n", fileName, strerror(errno));
         return;
     }
-    char buffer[256];
-    if (fgets(buffer, sizeof(buffer), file) == NULL) {
-        printf("Error: File is empty or could not read the descriptor line.\n");
+    fseek(file, 0, SEEK_END);
+    unsigned fileSize = ftell(file);
+    fseek(file, 0, SEEK_SET);
+    char *buffer = malloc(fileSize + 1); // +1 для термінального '\0'
+    if (buffer == NULL) {
+        printf("Error allocating memory.\n");
         fclose(file);
         return;
     }
-    printf("Reading file '%s' contents (ignoring descriptor):\n", fileName);
-    while (fgets(buffer, sizeof(buffer), file)) {
-        printf("%s", buffer);
+    unsigned bytesRead = fread(buffer, 1, fileSize, file);
+    if (bytesRead > fileSize) {
+        printf("Error reading file.\n");
+        free(buffer);
+        fclose(file);
+        return;
     }
+    buffer[bytesRead] = '\0';
+    char *start = buffer;
+    char *lineEnd = strchr(start, '\n');
+    if (lineEnd != NULL) {
+        start = lineEnd + 1;
+    }
+    printf("File content (ignoring the descriptor):\n");
+    do {
+        lineEnd = strchr(start, '\n');
+        if (lineEnd != NULL) {
+            *lineEnd = '\0'; // Завершуємо рядок
+        }
+        printf("%s\n", start);
+        if (lineEnd != NULL) {
+            start = lineEnd + 1;
+        }
+        else {
+            break;
+        }
+    } while (*start != '\0');
+    free(buffer);
     fclose(file);
     printf("\nFile reading complete.\n");
 }
@@ -148,84 +174,193 @@ int deleteFile(const char *fileName) {
     printf("Error deleting file '%s': %s\n", fileName, strerror(errno));
     return 0;
 }
-
-int readRecordsFromFile(const char *filename, record **records) {
+void printMenuOptions() {
+    printf("%c - choose a file to work with\n"
+               "%c - create a file\n"
+               "%c - open a file\n"
+               "%c - delete a file\n"
+               "%c - create a record\n"
+               "%c - read a record\n"
+               "%c - edit a record\n"
+               "%c - sort a record\n"
+               "%c - insert a record\n"
+               "%c - delete a record\n"
+               "ESC - exit the program\n"
+               ,MENU_KEY_CHOOSE_FILE
+               ,MENU_KEY_CREATE_FILE
+               ,MENU_KEY_OPEN_FILE
+               ,MENU_KEY_DELETE_FILE
+               ,MENU_KEY_CREATE_RECORD
+               ,MENU_KEY_READ_RECORD
+               ,MENU_KEY_EDIT_RECORD
+               ,MENU_KEY_SORT_RECORD
+               ,MENU_KEY_INSERT_RECORD
+               ,MENU_KEY_DELETE_RECORD);
+}
+int countRecordsInFile(char *filename) {
     FILE *file = fopen(filename, "r");
     if (!file) {
-        printf("Failed to open file for reading.\n");
+        printf("Failed to open file '%s' for reading.\n", filename);
         return 0;
     }
-
-    record *recordList = calloc(100, sizeof(record));  // Allocate memory for 100 records
     int recordCount = 0;
     char line[MAX_RECORD_LEN];
-    // Read records line by line
+    // Підрахунок записів за маркерами "Record :"
     while (fgets(line, sizeof(line), file)) {
-        if (strncmp(line, "Record", 6) == 0) {
-            // Parse record fields: region, area, population
-            fgets(line, sizeof(line), file);  // Read region
-            sscanf(line, "region: %s", recordList[recordCount].regionName);
-
-            fgets(line, sizeof(line), file);  // Read area
-            sscanf(line, "area: %f", &recordList[recordCount].squareArea);
-
-            fgets(line, sizeof(line), file);  // Read population
-            sscanf(line, "population: %f", &recordList[recordCount].population);
-
+        if (strstr(line, "Record") != NULL) {
             recordCount++;
         }
     }
     fclose(file);
-    *records = recordList;
     return recordCount;
 }
 
-// Function to write records back to the file
-void writeRecordsToFile(const char *filename, record *records, int recordCount) {
-    FILE *file = fopen(filename, "w");
+void writeRecordsToFile(char *filename) {
+    FILE *file = fopen(filename, "a");
     if (!file) {
         printf("Failed to open file for writing.\n");
         return;
     }
-
-    // Write all records back to the file
-    for (int i = 0; i < recordCount; i++) {
-        fprintf(file, "Record %d:\n", i + 1);
-        fprintf(file, "region: %s\n", records[i].regionName);
-        fprintf(file, "area: %.2f\n", records[i].squareArea);
-        fprintf(file, "population: %.2f\n", records[i].population);
-    }
-
+    int existingRecordCount = countRecordsInFile(filename);
+    int currentRecordIndex = existingRecordCount + 1;
+    record records = {"", 0 ,0};
+    printf("Writing record to file %s\n", filename);
+    do {
+        printf("Enter region name:\n");
+        fgets (records.regionName, MAX_REGION_LEN + 1, stdin);
+        fflush(stdin);
+    } while (!validInputString(records.regionName, MAX_REGION_LEN));
+    records.squareArea = validateFloatInput("Enter area of the region\n", FLOAT_MIN, FLOAT_MAX);
+    records.population = validateFloatInput("Enter number of the population\n", FLOAT_MIN, FLOAT_MAX);
+    fprintf(file, "Record #%d:\n", currentRecordIndex);
+    fprintf(file, "region: %s\n", records.regionName);
+    fprintf(file, "area: %f\n", records.squareArea);
+    fprintf(file, "population: %f\n", records.population);
     fclose(file);
+    printf("Record #%d successfully written in file %s\n", currentRecordIndex, filename);
 }
-
-// Function to delete a record by its index
-void deleteRecordFromFile(const char *filename, int recordIndex) {
-    record *records = NULL;
-    int recordCount = readRecordsFromFile(filename, &records);
-    if (recordCount == 0) {
-        printf("No records found to delete.\n");
+void readAllRecords(char *filename) {
+    FILE *file = fopen(filename, "r");
+    if (!file) {
+        printf("Failed to open file '%s' for reading.\n", filename);
         return;
     }
 
-    // Validate the record index
-    if (recordIndex < 0 || recordIndex >= recordCount) {
-        printf("Invalid record index.\n");
-        free(records);
+    char line[MAX_RECORD_LEN];
+    int recordIndex = 0;
+    printf("Records in the file '%s':\n", filename);
+    if (fgets(line, sizeof(line), file) == NULL) {
+        printf("File '%s' is empty or cannot be read.\n", filename);
+        fclose(file);
         return;
     }
-    // Shift all records after the deleted one to the left
-    for (int i = recordIndex; i < recordCount - 1; i++) {
-        records[i] = records[i + 1];
+    while (fgets(line, sizeof(line), file)) {
+        if (strstr(line, "Record :") || strstr(line, "Record #")) {
+            printf("%d) ", ++recordIndex); // Індекс запису
+        }
+        printf("%s", line); // Виводимо лінію
     }
-    // Update the record count
-    recordCount--;
-    // Rewrite the file with the updated records
-    writeRecordsToFile(filename, records, recordCount);
-    free(records);
-    printf("Record deleted successfully.\n");
+    fclose(file);
+    if (recordIndex == 0) {
+        printf("No records found in the file.\n");
+    }
 }
+void readSpecificRecord(char *filename) {
+    FILE *file = fopen(filename, "r");
+    if (!file) {
+        printf("Failed to open file '%s' for reading.\n", filename);
+        return;
+    }
+    int targetIndex = 0;
+    int validInput = 0;
+    printf("Enter the record number you want to read:\n");
+    do {
+        validInput = scanf("%d", &targetIndex);
+        if(validInput != 1 || targetIndex <= 0 || targetIndex > 10){
+            printf("Invalid input. Index should be [1;10]\n");
+        }
+        fflush(stdin);
+    } while (validInput != 1 || targetIndex <= 0 || targetIndex > 10);
+    char line[MAX_RECORD_LEN];
+    int recordIndex = 0;
+    int foundRecord = 0;
+    while (fgets(line, sizeof(line), file)) {
+        if (strstr(line, "Record :") || strstr(line, "Record #")) {
+            recordIndex++; // Підрахунок записів
+            if (recordIndex == targetIndex) {
+                foundRecord = 1;
+            }
+            else if (foundRecord) {
+                break; // Завершення читання після вибраного запису
+            }
+        }
 
+        if (foundRecord) {
+            printf("%s", line); // Виводимо лінію обраного запису
+        }
+    }
+    fclose(file);
+    if (!foundRecord) {
+        printf("Record %d not found in the file '%s'.\n", targetIndex, filename);
+    }
+}
+void deleteRecord(char *filename) {
+    FILE *file = fopen(filename, "r");
+    if (!file) {
+        printf("Failed to open file '%s' for reading.\n", filename);
+        return;
+    }
+    char tempFilename[MAX_FILE_NAME];
+    snprintf(tempFilename, sizeof(tempFilename), "temp_%s", filename);
+    FILE *tempFile = fopen(tempFilename, "w");
+    if (!tempFile) {
+        printf("Failed to create temporary file for writing.\n");
+        fclose(file);
+        return;
+    }
+    int targetIndex = 0;
+    int validInput = 0;
+    printf("Enter the record number you want to delete in %s:\n", filename);
+    do {
+        validInput = scanf("%d", &targetIndex);
+        if(validInput != 1 || targetIndex <= 0 || targetIndex > 10){
+            printf("Invalid input. Index should be [1;10]\n");
+        }
+        fflush(stdin);
+    } while (validInput != 1 || targetIndex <= 0 || targetIndex > 10);
+    char line[MAX_RECORD_LEN];
+    int recordIndex = 0;
+    int isDeleting = 0;
+    int recordDeleted = 0;
+    while (fgets(line, sizeof(line), file)) {
+        if (strstr(line, "Record :") || strstr(line, "Record #")) {
+            recordIndex++;
+            isDeleting = (recordIndex == targetIndex);
+            if (isDeleting) {
+                recordDeleted = 1;
+            }
+        }
+        if (!isDeleting) {
+            fprintf(tempFile, "%s", line);
+        }
+    }
+    fclose(file);
+    fclose(tempFile);
+    if (recordDeleted) {
+        remove(filename);
+        rename(tempFilename, filename);
+        printf("The %d record has been successfully deleted.\n", targetIndex);
+    }
+    else {
+        remove(tempFilename);
+        printf("Record %d not found in the file '%s'.\n", targetIndex, filename);
+        return;
+    }
+    // Виведення оновленого списку записів
+    printf("Updated records:\n");
+    readAllRecords(filename);
+}
+/*
 void editRecordInFile(const char *filename, int recordIndex) {
     record *records = NULL;
     int correctInput = 0;
@@ -314,30 +449,6 @@ void sortRecordsInFile(const char *filename, int field, int order) {
     writeRecordsToFile(filename, records, recordCount);
     free(records);
     printf("Records sorted successfully.\n");
-}
+}*/
 
-
-void printMenuOptions() {
-    printf("%c - choose a file to work with\n"
-               "%c - create a file\n"
-               "%c - open a file\n"
-               "%c - delete a file\n"
-               "%c - create a record\n"
-               "%c - read a record\n"
-               "%c - edit a record\n"
-               "%c - sort a record\n"
-               "%c - insert a record\n"
-               "%c - delete a record\n"
-               "ESC - exit the program\n"
-               ,MENU_KEY_CHOOSE_FILE
-               ,MENU_KEY_CREATE_FILE
-               ,MENU_KEY_OPEN_FILE
-               ,MENU_KEY_DELETE_FILE
-               ,MENU_KEY_CREATE_RECORD
-               ,MENU_KEY_READ_RECORD
-               ,MENU_KEY_EDIT_RECORD
-               ,MENU_KEY_SORT_RECORD
-               ,MENU_KEY_INSERT_RECORD
-               ,MENU_KEY_DELETE_RECORD);
-}
 #endif // FUNCTION_H
