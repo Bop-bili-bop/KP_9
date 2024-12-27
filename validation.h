@@ -76,5 +76,101 @@ float validateFloatInput(char *prompt, float min, float max) {
     } while (correctInput != 1 || input < min || input > max);
     return input;
 }
+char validateCharInput(char *prompt, char choice1, char choice2, char choice3)
+{
+    char userChoice = 0;
+    do
+    {
+        printf("%s", prompt);
+        userChoice = getch();
+        switch(userChoice) {
+            case '1':
+                printf("Your choice:%c\n", choice1);
+                break;
+            case '2':
+                printf("Your choice:%c\n", choice2);
+                break;
+            case '0':
+                printf("Your choice:%c\n", choice3);
+                break;
+            default:
+                printf("Invalid input.\n");
+                fflush(stdin);
+                userChoice = 3;
+                break;
+        }
+    }
+    while (userChoice == 3);
+    return userChoice;
+}
+int readSkipDescriptor(char *line, FILE *file) {
+    if (fgets(line, sizeof(line), file) == NULL) {
+        printf("File is empty or cannot be read.\n");
+        fclose(file);
+        return 0;
+    }
+    return 1;
+}
+long countBytesInFile(const char *fileName) {
+    FILE *file = fopen(fileName, "rb");
+    if (file == NULL) {
+        perror("Error opening file");
+        return -1;
+    }
 
+    fseek(file, 0, SEEK_END);
+    long fileSize = ftell(file);
+    fclose(file);
+
+    return fileSize;
+}
+
+// Function to append file size at the end of the file
+int appendFileSize(const char *fileName) {
+    long fileSize = countBytesInFile(fileName);
+    if (fileSize == -1) {
+        return 0;
+    }
+
+    FILE *file = fopen(fileName, "ab");
+    if (file == NULL) {
+        perror("Error opening file for appending");
+        return 0;
+    }
+
+    fwrite(&fileSize, sizeof(long), 1, file);
+    fclose(file);
+
+    return 1;
+}
+
+// Function to verify file size
+int verifyFileSize(const char *fileName) {
+    FILE *file = fopen(fileName, "rb");
+    if (file == NULL) {
+        perror("Error opening file");
+        return 0;
+    }
+
+    fseek(file, 0, SEEK_END);
+    long actualSize = ftell(file);
+
+    if (actualSize < sizeof(long)) {
+        fclose(file);
+        fprintf(stderr, "File is too small to contain size metadata.\n");
+        return 0;
+    }
+
+    fseek(file, -sizeof(long), SEEK_END);
+    long storedSize;
+    fread(&storedSize, sizeof(long), 1, file);
+    fclose(file);
+
+    if (storedSize != actualSize - sizeof(long)) {
+        fprintf(stderr, "File size mismatch.\n");
+        return 0;
+    }
+
+    return 1;
+}
 #endif
