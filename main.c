@@ -12,6 +12,7 @@ FILE *file;
 int main() {
     char fileName[MAX_FILE_NAME] = "";
     char choice = 0;
+    printf("This is a file manager.\nAt first you should choose a file you want to work with or create one\n");
     do {
         printMenuOptions();
         choice = getch();
@@ -23,36 +24,23 @@ int main() {
             case MENU_KEY_CREATE_FILE:
                 system("cls");
                 createNewFileByName(fileName);
-                appendFileSize(fileName);
                 break;
             case MENU_KEY_OPEN_FILE:
                 system("cls");
-                if (verifyFileSize(fileName)) {
-                    readFile(fileName);
-                }
-                else {
-                    printf("File verification failed.\n");
-                }
+                readFile(fileName);
                 break;
             case MENU_KEY_DELETE_FILE:
                 system("cls");
-                deleteFile(fileName);//logic??
+                deleteFile(fileName);
                 break;
             case MENU_KEY_CREATE_RECORD:
                 system("cls");
-                if (verifyFileSize(fileName)) {
-                    writeRecordsToFile(fileName);
-                    appendFileSize(fileName);
-                }
-                else {
-                    printf("File verification failed.\n");
-                }
+                writeRecordsToFile(fileName);
                 break;
             case MENU_KEY_READ_RECORD:
                 system("cls");
                 char readRecordChoice = 0;
-                if (verifyFileSize(fileName)) {
-                    do {
+                do {
 
                         printf("Press 1 to read all records in %s\n"
                                "Press 2 to read record with specific index in %s\n"
@@ -71,54 +59,26 @@ int main() {
                             break;
                         }
                     }while (readRecordChoice != 0);
-                }
-                else {
-                    printf("File verification failed.\n");
-                }
                 break;
             case MENU_KEY_EDIT_RECORD:
                 system("cls");
-                if (verifyFileSize(fileName)) {
-                    editRecordInFile(fileName);
-                    appendFileSize(fileName); // Додаємо розмір після редагування
-                }
-                else {
-                printf("File verification failed. Operation aborted.\n");
-                }
+                editRecordInFile(fileName);
                 break;
             case MENU_KEY_SORT_RECORD:
                 system("cls");
-                if (verifyFileSize(fileName)) {
-                    readAllRecords(fileName);
-                    sortRecordsInFile(fileName);
-                    appendFileSize(fileName); // Додаємо розмір після сортування
-                }
-                else {
-                    printf("File verification failed. Operation aborted.\n");
-                }
+                readAllRecords(fileName);
+                sortRecordsInFile(fileName);
                 break;
             case MENU_KEY_INSERT_RECORD:
                 system("cls");
-                if (verifyFileSize(fileName)) {
-                    insertRecordIntoFile(fileName);
-                    appendFileSize(fileName); // Додаємо розмір після вставки
-                }
-                else {
-                    printf("File verification failed. Operation aborted.\n");
-                }
+                insertRecordIntoFile(fileName);
                 break;
             case MENU_KEY_DELETE_RECORD:
                 system("cls");
-                if (verifyFileSize(fileName)) {
-                    deleteRecord(fileName);
-                    appendFileSize(fileName); // Додаємо розмір після видалення
-                }
-                else {
-                    printf("File verification failed. Operation aborted.\n");
-                }
+                deleteRecord(fileName);
                 break;
             case ESC:
-                system("cls ");
+                system("cls");
                 break;
             default:
                 system("cls");

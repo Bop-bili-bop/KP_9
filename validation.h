@@ -14,15 +14,13 @@ int validInputString(char *arr, int size) {
         fflush(stdin);
         return 0;
     }
-    // Handle case when input exceeds buffer size
     if (arr[stringLen - 1] != '\n') {
         printf("Invalid input. Max length of string is: %d\n", size);
-        fflush(stdin); // Clear input buffer
+        fflush(stdin);
         return 0;
     }
     arr[stringLen - 1] = '\0';
     stringLen--;
-    //only letters
     for (unsigned i = 0; i < stringLen; i++) {
         if (!isalpha(arr[i])) {
             printf("String must contain only letters.\n");
@@ -39,21 +37,19 @@ void validateInputFileName(char *string) {
     } while (!validInputString(string, MAX_FILE_NAME_LEN));
 }
 int isValidDescriptor(const char *filename) {
-    FILE *file = fopen(filename, "r");  // Open the file for reading
+    FILE *file = fopen(filename, "r");
     if (file == NULL) {
-        return 0;  // If the file cannot be opened, return 0
+        return 0;
     }
-
     char firstLine[DESCRIPTOR_LEN];
     if (fgets(firstLine, sizeof(firstLine), file) != NULL) {
-        // Compare the first line with the descriptor
         if (strncmp(firstLine, DESCRIPTOR, strlen(DESCRIPTOR)) == 0) {
             fclose(file);
-            return 1;  // If the lines match, return 1
+            return 1;
         }
     }
     fclose(file);
-    return 0;  // If the lines don't match, return 0
+    return 0;
 }
 int doesFileExist(const char *filename) {
     FILE *file = fopen(filename, "r");
@@ -109,68 +105,6 @@ int readSkipDescriptor(char *line, FILE *file) {
         fclose(file);
         return 0;
     }
-    return 1;
-}
-long countBytesInFile(const char *fileName) {
-    FILE *file = fopen(fileName, "rb");
-    if (file == NULL) {
-        perror("Error opening file");
-        return -1;
-    }
-
-    fseek(file, 0, SEEK_END);
-    long fileSize = ftell(file);
-    fclose(file);
-
-    return fileSize;
-}
-
-// Function to append file size at the end of the file
-int appendFileSize(const char *fileName) {
-    long fileSize = countBytesInFile(fileName);
-    if (fileSize == -1) {
-        return 0;
-    }
-
-    FILE *file = fopen(fileName, "ab");
-    if (file == NULL) {
-        perror("Error opening file for appending");
-        return 0;
-    }
-
-    fwrite(&fileSize, sizeof(long), 1, file);
-    fclose(file);
-
-    return 1;
-}
-
-// Function to verify file size
-int verifyFileSize(const char *fileName) {
-    FILE *file = fopen(fileName, "rb");
-    if (file == NULL) {
-        perror("Error opening file");
-        return 0;
-    }
-
-    fseek(file, 0, SEEK_END);
-    long actualSize = ftell(file);
-
-    if (actualSize < sizeof(long)) {
-        fclose(file);
-        fprintf(stderr, "File is too small to contain size metadata.\n");
-        return 0;
-    }
-
-    fseek(file, -sizeof(long), SEEK_END);
-    long storedSize;
-    fread(&storedSize, sizeof(long), 1, file);
-    fclose(file);
-
-    if (storedSize != actualSize - sizeof(long)) {
-        fprintf(stderr, "File size mismatch.\n");
-        return 0;
-    }
-
     return 1;
 }
 #endif

@@ -53,7 +53,7 @@ void createFile(char *fileName) {
 }
 void createNewFileByName(char *selectedFile) {
     do {
-        printf("Enter name of file you want to create:\n");
+        printf("Enter name of file you want to create (only latin letters):\n");
         validateInputFileName(selectedFile);
         strcat(selectedFile, ".dat");
         if(doesFileExist(selectedFile)) {
@@ -129,7 +129,7 @@ void readFile(char *fileName) {
     fseek(file, 0, SEEK_END);
     unsigned fileSize = ftell(file);
     fseek(file, 0, SEEK_SET);
-    char *buffer = malloc(fileSize + 1); // +1 для термінального '\0'
+    char *buffer = malloc(fileSize + 1);
     if (buffer == NULL) {
         printf("Error allocating memory.\n");
         fclose(file);
@@ -152,7 +152,7 @@ void readFile(char *fileName) {
     do {
         lineEnd = strchr(start, '\n');
         if (lineEnd != NULL) {
-            *lineEnd = '\0'; // Завершуємо рядок
+            *lineEnd = '\0';
         }
         printf("%s\n", start);
         if (lineEnd != NULL) {
@@ -200,12 +200,11 @@ void printMenuOptions() {
 int countRecordsInFile(char *filename) {
     FILE *file = fopen(filename, "r");
     if (file == NULL) {
-        printf("Failed to open file '%s' for reading.\n", filename);
+        printf("Failed to open file '%s' for reading.('' means the file doesn't exist)\n", filename);
         return 0;
     }
     int recordCount = 0;
     char line[MAX_RECORD_LEN];
-    // Підрахунок записів за маркерами "Record :"
     while (fgets(line, sizeof(line), file)) {
         if (strstr(line, "Record") != NULL) {
             recordCount++;
@@ -232,7 +231,7 @@ void writeRecordsToFile(char *filename) {
     record records = {"", 0 ,0};
     printf("Writing record to file %s\n", filename);
     do {
-        printf("Enter region name:\n");
+        printf("Enter region name(max 3 latin letters length):\n");
         fgets (records.regionName, MAX_REGION_LEN + 1, stdin);
         fflush(stdin);
     } while (!validInputString(records.regionName, MAX_REGION_LEN));
@@ -248,7 +247,7 @@ void writeRecordsToFile(char *filename) {
 void readAllRecords(char *filename) {
     FILE *file = fopen(filename, "r");
     if (file == NULL) {
-        printf("Failed to open file '%s' for reading.\n", filename);
+        printf("Failed to open file '%s' for reading.('' means the file doesn't exist)\n", filename);
         return;
     }
 
@@ -262,9 +261,9 @@ void readAllRecords(char *filename) {
     }
     while (fgets(line, sizeof(line), file)) {
         if (strstr(line, "Record :") || strstr(line, "Record #")) {
-            printf("%d) ", ++recordIndex); // Індекс запису
+            printf("%d) ", ++recordIndex);
         }
-        printf("%s", line); // Виводимо лінію
+        printf("%s", line);
     }
     fclose(file);
     if (recordIndex == 0) {
@@ -274,7 +273,7 @@ void readAllRecords(char *filename) {
 void readSpecificRecord(char *filename) {
     FILE *file = fopen(filename, "r");
     if (file == NULL) {
-        printf("Failed to open file '%s' for reading.\n", filename);
+        printf("Failed to open file '%s' for reading.('' means the file doesn't exist)\n", filename);
         return;
     }
     int targetIndex = 0;
@@ -292,16 +291,16 @@ void readSpecificRecord(char *filename) {
     int foundRecord = 0;
     while (fgets(line, sizeof(line), file)) {
         if (strstr(line, "Record :") || strstr(line, "Record #")) {
-            recordIndex++; // Підрахунок записів
+            recordIndex++;
             if (recordIndex == targetIndex) {
                 foundRecord = 1;
             }
             else if (foundRecord) {
-                break; // Завершення читання після вибраного запису
+                break;
             }
         }
         if (foundRecord) {
-            printf("%s", line); // Виводимо лінію обраного запису
+            printf("%s", line);
         }
     }
     fclose(file);
@@ -312,7 +311,7 @@ void readSpecificRecord(char *filename) {
 void deleteRecord(char *filename) {
     FILE *file = fopen(filename, "r");
     if (file == NULL) {
-        printf("Failed to open file '%s' for reading.\n", filename);
+        printf("Failed to open file '%s' for reading.('' means the file doesn't exist)\n", filename);
         return;
     }
     char tempFilename[MAX_FILE_NAME];
@@ -361,35 +360,31 @@ void deleteRecord(char *filename) {
         printf("Record %d not found in the file '%s'.\n", targetIndex, filename);
         return;
     }
-    // Виведення оновленого списку записів
     printf("Updated records:\n");
     readAllRecords(filename);
 }
 void sortRecordsInFile(char *filename) {
     FILE *file = fopen(filename, "r");
     if (file == NULL) {
-        printf("Failed to open file '%s' for reading.\n", filename);
+        printf("Failed to open file '%s' for reading.('' means the file doesn't exist)\n", filename);
         return;
     }
     char line[MAX_RECORD_LEN];
     record records[MAX_RECORD_IN_FILE];
     int recordCount = 0;
-    // Пропускаємо дескриптор
     if (fgets(line, sizeof(line), file) == NULL) {
         printf("File is empty or cannot be read.\n");
         fclose(file);
         return;
     }
-    // Зчитуємо записи
     while (fgets(line, sizeof(line), file)) {
         if (strstr(line, "Record :") || strstr(line, "Record #")) {
-            // Читаємо запис
             record currentRecord;
-            fgets(line, sizeof(line), file); // Читаємо region
+            fgets(line, sizeof(line), file);
             sscanf(line, "region: %s", currentRecord.regionName);
-            fgets(line, sizeof(line), file); // Читаємо area
+            fgets(line, sizeof(line), file);
             sscanf(line, "area: %f", &currentRecord.squareArea);
-            fgets(line, sizeof(line), file); // Читаємо population
+            fgets(line, sizeof(line), file);
             sscanf(line, "population: %f", &currentRecord.population);
 
             records[recordCount++] = currentRecord;
@@ -401,27 +396,23 @@ void sortRecordsInFile(char *filename) {
         printf("Not enough records found to sort.\n");
         return;
     }
-
-    // Вибір сортування
     char sortOrder = validateCharInput("descending order: enter 1\nascending order: enter 2\n",
                                     '1','2', '1');
     char sortField = validateCharInput("0 - to sort by region\n1 - to sort by area\n2 - to sort by population\n",
                                 '1','2', '0');
 
     printf("sortOrder: %c; field: %c\n", sortOrder, sortField);
-
-    // Сортування
     for (int i = 0; i < recordCount - 1; i++) {
         for (int j = 0; j < recordCount - i - 1; j++) {
             int compare = 0;
             switch (sortField) {
-                case '0': // Сортування за regionName
+                case '0':
                     compare = strcmp(records[j].regionName, records[j + 1].regionName);
                     break;
-                case '1': // Сортування за squareArea
+                case '1':
                     compare = (records[j].squareArea > records[j + 1].squareArea) ? 1 : -1;
                     break;
-                case '2': // Сортування за population
+                case '2':
                     compare = (records[j].population > records[j + 1].population) ? 1 : -1;
                     break;
                 default:
@@ -435,125 +426,105 @@ void sortRecordsInFile(char *filename) {
             }
         }
     }
-
-    // Виведення до і після
     printf("before:\n");
     for (int i = 0; i < recordCount; i++) {
-        printf("%d) Region: %s\n   Area: %.2f\n   Population: %.2f\n",
+        printf("%d) Region: %s\n   Area: %f\n   Population: %f\n",
                i + 1, records[i].regionName, records[i].squareArea, records[i].population);
     }
-
-    // Запис відсортованих записів у файл
     file = fopen(filename, "w");
     if (!file) {
-        printf("Failed to open file '%s' for writing.\n", filename);
+        printf("Failed to open file '%s' for writing.('' means the file doesn't exist)\n", filename);
         return;
     }
-
-    fprintf(file, "%s\n", DESCRIPTOR); // Записуємо дескриптор
+    fprintf(file, "%s\n", DESCRIPTOR);
     for (int i = 0; i < recordCount; i++) {
         fprintf(file, "Record #%d:\n", i + 1);
         fprintf(file, "region: %s\n", records[i].regionName);
-        fprintf(file, "area: %.2f\n", records[i].squareArea);
-        fprintf(file, "population: %.2f\n", records[i].population);
+        fprintf(file, "area: %f\n", records[i].squareArea);
+        fprintf(file, "population: %f\n", records[i].population);
     }
     fclose(file);
-
     printf("after:\n");
     for (int i = 0; i < recordCount; i++) {
-        printf("%d) Region: %s\n   Area: %.2f\n   Population: %.2f\n",
+        printf("%d) Region: %s\n   Area: %f\n   Population: %f\n",
                i + 1, records[i].regionName, records[i].squareArea, records[i].population);
     }
-
     printf("Records have been sorted and saved to file '%s'.\n", filename);
 }
 void editRecordInFile(char *filename) {
     FILE *file = fopen(filename, "r");
     if (file == NULL) {
-        printf("Failed to open file '%s' for reading.\n", filename);
+        printf("Failed to open file '%s' for reading.('' means the file doesn't exist)\n", filename);
         return;
     }
 
     char line[MAX_RECORD_LEN];
     record records[MAX_RECORD_IN_FILE];
     int recordCount = 0;
-
-    // Пропускаємо дескриптор
     if (fgets(line, sizeof(line), file) == NULL) {
         printf("File '%s' is empty or cannot be read.\n", filename);
         fclose(file);
         return;
     }
-
-    // Зчитуємо записи
     while (fgets(line, sizeof(line), file)) {
         if (strstr(line, "Record :") || strstr(line, "Record #")) {
-            // Читаємо запис
             record currentRecord;
-            fgets(line, sizeof(line), file); // Читаємо region
+            fgets(line, sizeof(line), file);
             sscanf(line, "region: %s", currentRecord.regionName);
-            fgets(line, sizeof(line), file); // Читаємо area
+            fgets(line, sizeof(line), file);
             sscanf(line, "area: %f", &currentRecord.squareArea);
-            fgets(line, sizeof(line), file); // Читаємо population
+            fgets(line, sizeof(line), file);
             sscanf(line, "population: %f", &currentRecord.population);
-
             records[recordCount++] = currentRecord;
         }
     }
     fclose(file);
-
     if (recordCount == 0) {
         printf("No records found to edit.\n");
         return;
     }
-
-    // Виводимо записи для користувача
     printf("Choose the record you want to edit:\n");
     for (int i = 0; i < recordCount; i++) {
-        printf("%d) Region: %s\n   Area: %.2f\n   Population: %.2f\n",
+        printf("%d) Region: %s\n   Area: %f\n   Population: %f\n",
                i + 1, records[i].regionName, records[i].squareArea, records[i].population);
     }
-
-    // Обираємо запис для редагування
     int recordNumber = 0, validInput = 0;
     do {
         printf("Enter the number of the record you want to edit: ");
         validInput = scanf("%d", &recordNumber);
         if (validInput != 1 || recordNumber < 1 || recordNumber > recordCount) {
             printf("Invalid record number.\n");
-            fflush(stdin);
         }
+        fflush(stdin);
     }while(validInput != 1 || recordNumber < 1 || recordNumber > recordCount);
-
-    record *selectedRecord = &records[recordNumber - 1];
-
-    // Редагування полів
-    printf("Enter the new region: ");
-    scanf("%s", selectedRecord->regionName);
-    printf("Enter the new area: ");
-    scanf("%f", &selectedRecord->squareArea);
-    printf("Enter the new population: ");
-    scanf("%f", &selectedRecord->population);
-
+    record *selectedRecord = &records[recordNumber-1];
+    do {
+        printf("Enter region name(max 3 latin letters length):\n");
+        fgets (selectedRecord->regionName, MAX_REGION_LEN + 1, stdin);
+        fflush(stdin);
+    } while (!validInputString(selectedRecord->regionName, MAX_REGION_LEN));
+    selectedRecord->squareArea = validateFloatInput("Enter area of the region\n", FLOAT_MIN, FLOAT_MAX);
+    selectedRecord->population = validateFloatInput("Enter number of the population\n", FLOAT_MIN, FLOAT_MAX);
+    fprintf(file, "Record #%d:\n", recordNumber);
+    fprintf(file, "region: %s\n", selectedRecord->regionName);
+    fprintf(file, "area: %f\n", selectedRecord->squareArea);
+    fprintf(file, "population: %f\n", selectedRecord->population);
     printf("The record has been successfully changed.\n");
 
-    // Записуємо змінені записи назад у файл
     file = fopen(filename, "w");
     if (file == NULL) {
-        printf("Failed to open file '%s' for writing.\n", filename);
+        printf("Failed to open file '%s' for writing. ('' means the file doesn't exist)\n", filename);
         return;
     }
-
-    fprintf(file, "%s\n", DESCRIPTOR); // Записуємо дескриптор
+    fprintf(file, "%s\n", DESCRIPTOR);
     for (int i = 0; i < recordCount; i++) {
         fprintf(file, "Record #%d:\n", i + 1);
         fprintf(file, "region: %s\n", records[i].regionName);
-        fprintf(file, "area: %.2f\n", records[i].squareArea);
-        fprintf(file, "population: %.2f\n", records[i].population);
+        fprintf(file, "area: %f\n", records[i].squareArea);
+        fprintf(file, "population: %f\n", records[i].population);
     }
     fclose(file);
 
-    // Виводимо оновлені записи
     printf("Updated records:\n");
     for (int i = 0; i < recordCount; i++) {
         printf("%d) Region: %s\n   Area: %f\n   Population: %f\n",
@@ -563,7 +534,7 @@ void editRecordInFile(char *filename) {
 void insertRecordIntoFile(char *filename) {
     FILE *file = fopen(filename, "r");
     if (file == NULL) {
-        printf("Failed to open file '%s' for reading.\n", filename);
+        printf("Failed to open file '%s' for reading.('' means the file doesn't exist)\n", filename);
         return;
     }
 
@@ -571,22 +542,14 @@ void insertRecordIntoFile(char *filename) {
     record records[MAX_RECORD_IN_FILE];
     int recordCount = 0;
 
-    // Пропускаємо дескриптор
-    if (fgets(line, sizeof(line), file) == NULL) {
-        printf("File '%s' is empty or cannot be read.\n", filename);
-        fclose(file);
-        return;
-    }
-
-    // Зчитуємо записи
     while (fgets(line, sizeof(line), file)) {
         if (strstr(line, "Record :") || strstr(line, "Record #")) {
             record currentRecord;
-            fgets(line, sizeof(line), file); // Читаємо region
-            sscanf(line, "region: %s", currentRecord.regionName);
-            fgets(line, sizeof(line), file); // Читаємо area
+            fgets(line, sizeof(line), file);
+            sscanf(line, "region: %[^\n]", currentRecord.regionName);
+            fgets(line, sizeof(line), file);
             sscanf(line, "area: %f", &currentRecord.squareArea);
-            fgets(line, sizeof(line), file); // Читаємо population
+            fgets(line, sizeof(line), file);
             sscanf(line, "population: %f", &currentRecord.population);
 
             records[recordCount++] = currentRecord;
@@ -594,48 +557,42 @@ void insertRecordIntoFile(char *filename) {
     }
     fclose(file);
 
-    // Вивід існуючих записів для зручності
     printf("Current records:\n");
     for (int i = 0; i < recordCount; i++) {
         printf("%d) Region: %s\n   Area: %f\n   Population: %f\n",
                i + 1, records[i].regionName, records[i].squareArea, records[i].population);
     }
-    int insertPosition;
-    printf("Enter the position where you want to insert the new record (1 to %d): ", recordCount);
-    scanf("%d", &insertPosition);
 
-    // Перевірка на коректність позиції
-    if (insertPosition < 1 || insertPosition > recordCount) {
+    int insertPosition;
+    printf("Enter the position where you want to insert the new record (1 to %d): ", recordCount + 1);
+    int validInput = scanf("%d", &insertPosition);
+    fflush(stdin);
+    if (validInput != 1 || insertPosition < 1 || insertPosition > recordCount + 1) {
         printf("Invalid position. Aborting insertion.\n");
         return;
     }
-    // Введення нового запису
-    printf("Enter the new record you want to insert in %d position\n", recordCount);
     record newRecord;
-    printf("Enter the region: ");
-    scanf("%s", newRecord.regionName);
-    printf("Enter the area: ");
-    scanf("%f", &newRecord.squareArea);
-    printf("Enter the population: ");
-    scanf("%f", &newRecord.population);
-    // Вибір позиції для вставки
+    do {
+        printf("Enter region name(max 3 latin letters length): ");
+        fgets(newRecord.regionName, MAX_REGION_LEN + 1, stdin);
+        fflush(stdin);
+    } while (!validInputString(newRecord.regionName, MAX_REGION_LEN+1));
+    newRecord.squareArea = validateFloatInput("Enter area of the region: ", FLOAT_MIN, FLOAT_MAX);
+    newRecord.population = validateFloatInput("Enter number of the population: ", FLOAT_MIN, FLOAT_MAX);
 
-
-    // Зсув записів і вставка нового запису
     for (int i = recordCount; i >= insertPosition; i--) {
         records[i] = records[i - 1];
     }
     records[insertPosition - 1] = newRecord;
     recordCount++;
 
-    // Запис оновленого масиву у файл
     file = fopen(filename, "w");
     if (file == NULL) {
         printf("Failed to open file '%s' for writing.\n", filename);
         return;
     }
 
-    fprintf(file, "%s\n", DESCRIPTOR); // Записуємо дескриптор
+    fprintf(file, "%s\n", DESCRIPTOR);
     for (int i = 0; i < recordCount; i++) {
         fprintf(file, "Record #%d:\n", i + 1);
         fprintf(file, "region: %s\n", records[i].regionName);
@@ -644,11 +601,10 @@ void insertRecordIntoFile(char *filename) {
     }
     fclose(file);
 
-    // Вивід оновлених записів
     printf("Updated records:\n");
     for (int i = 0; i < recordCount; i++) {
         printf("%d) Region: %s\n   Area: %f\n   Population: %f\n",
-               i , records[i].regionName, records[i].squareArea, records[i].population);
+               i + 1, records[i].regionName, records[i].squareArea, records[i].population);
     }
 }
 #endif // FUNCTION_H
